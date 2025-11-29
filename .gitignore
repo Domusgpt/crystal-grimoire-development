@@ -57,3 +57,7 @@ GoogleService-Info.plist
 firebase-adminsdk-*.json
 # Generated audio assets
 assets/sounds/
+
+# Test files with local keys
+test-gemini.js
+test-auth-functions.js

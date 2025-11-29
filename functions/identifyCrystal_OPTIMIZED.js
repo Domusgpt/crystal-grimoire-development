@@ -117,7 +117,7 @@ const crystalResponseSchema = {
 };
 
 exports.identifyCrystalOptimized = onCall(
-  { cors: true, memory: '1GiB', timeoutSeconds: 60 },
+  { cors: true, memory: '1GiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] },
   async (request) => {
     // Authentication check
     if (!request.auth) {
@@ -126,9 +126,11 @@ exports.identifyCrystalOptimized = onCall(
 
     const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-    // Get API key from environment
-    const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyD511HWAp4bw5Bwp8A1uTSiGxGRNJJFY-8';
-    const genAI = new GoogleGenerativeAI(apiKey);
+    // Get API key from Secret Manager
+    if (!process.env.GEMINI_API_KEY) {
+      throw new HttpsError('failed-precondition', 'GEMINI_API_KEY not configured');
+    }
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     try {
       const { imageData } = request.data;
