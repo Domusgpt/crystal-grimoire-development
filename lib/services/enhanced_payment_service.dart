@@ -194,6 +194,7 @@ class EnhancedPaymentService {
   
   // Purchase premium subscription
   static Future<PurchaseResult> purchasePremium() async {
+    print('🔥 purchasePremium called, productId: $premiumMonthlyId');
     return await _purchaseProduct(premiumMonthlyId, 'premium');
   }
   
@@ -400,8 +401,11 @@ class EnhancedPaymentService {
   }
   
   static Future<PurchaseResult> _handleWebPurchase(String productId, String tier) async {
+    print('🔥 _handleWebPurchase called: productId=$productId, tier=$tier');
     final user = FirebaseAuth.instance.currentUser;
+    print('🔥 Current user: ${user?.uid ?? "NULL"}');
     if (user == null) {
+      print('🔥 No user, returning error');
       return PurchaseResult(
         success: false,
         error: 'You must be signed in to start a subscription.',
@@ -409,17 +413,13 @@ class EnhancedPaymentService {
       );
     }
 
-    if (_config.stripePublishableKey.isEmpty) {
-      return PurchaseResult(
-        success: false,
-        error:
-            'Stripe is not configured for web purchases. Set STRIPE_PUBLISHABLE_KEY and price IDs before deploying.',
-        isWebPlatform: true,
-      );
-    }
+    // Note: For Stripe Checkout (server-side session), we don't need publishable key
+    // The server creates the session and returns a hosted checkout URL
 
     try {
       final urls = _buildWebCheckoutUrls();
+      print('🔥 URLs: $urls');
+      print('🔥 Calling createStripeCheckoutSession...');
       final callable = _functions.httpsCallable('createStripeCheckoutSession');
       final response = await callable.call({
         'priceId': productId,

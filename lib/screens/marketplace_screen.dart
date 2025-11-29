@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../widgets/coming_soon_card.dart';
 
 class MarketplaceScreen extends StatefulWidget {
   const MarketplaceScreen({Key? key}) : super(key: key);
@@ -801,6 +802,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen>
                     child: _buildListingsGrid(_myListings),
                   )
                 : _buildEmptyMyListingsMessage(),
+            const SizedBox(height: 32),
+            // Crystal Sales Expert - Coming Soon
+            ComingSoonCard.crystalSales(),
           ],
         ],
       ),

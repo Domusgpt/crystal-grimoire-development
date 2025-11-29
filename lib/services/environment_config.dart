@@ -26,14 +26,21 @@ class EnvironmentConfig {
   static const String _firebaseAppId = String.fromEnvironment('FIREBASE_APP_ID', defaultValue: '1:937741022651:web:cf181d053f178c9298c09e');
   
   // Stripe Configuration - Production Live Keys
-  static const String _stripePublishableKey = String.fromEnvironment('STRIPE_PUBLISHABLE_KEY', defaultValue: '');
+  // Note: Publishable key is public and safe to include in client code
+  static const String _stripePublishableKey = String.fromEnvironment(
+      'STRIPE_PUBLISHABLE_KEY',
+      defaultValue: 'pk_test_51PMpy5P7RjgzZkITKZQMNTY1YRgvXZJYZQMNTY1YRgvXZJ');
   static const String _stripeSecretKey = String.fromEnvironment('STRIPE_SECRET_KEY', defaultValue: '');
-  static const String _stripePremiumPriceId =
-      String.fromEnvironment('STRIPE_PREMIUM_PRICE_ID', defaultValue: '');
-  static const String _stripeProPriceId =
-      String.fromEnvironment('STRIPE_PRO_PRICE_ID', defaultValue: '');
-  static const String _stripeFoundersPriceId =
-      String.fromEnvironment('STRIPE_FOUNDERS_PRICE_ID', defaultValue: '');
+  // Price IDs are public identifiers - safe to include as defaults
+  static const String _stripePremiumPriceId = String.fromEnvironment(
+      'STRIPE_PREMIUM_PRICE_ID',
+      defaultValue: 'price_1SXCmJP7RjgzZkITq8J21YmC');
+  static const String _stripeProPriceId = String.fromEnvironment(
+      'STRIPE_PRO_PRICE_ID',
+      defaultValue: 'price_1SXCmJP7RjgzZkITvyuN6YgQ');
+  static const String _stripeFoundersPriceId = String.fromEnvironment(
+      'STRIPE_FOUNDERS_PRICE_ID',
+      defaultValue: 'price_1SXCmKP7RjgzZkITSwtX0xDf');
 
   // AdMob configuration
   static const String _admobAndroidBannerId = String.fromEnvironment('ADMOB_ANDROID_BANNER_ID', defaultValue: '');
@@ -53,9 +60,16 @@ class EnvironmentConfig {
   static const String _backendUrl = String.fromEnvironment('BACKEND_URL', defaultValue: '');
   static const bool _useLocalBackend =
       bool.fromEnvironment('USE_LOCAL_BACKEND', defaultValue: false);
-  static const String _termsUrl = String.fromEnvironment('TERMS_URL', defaultValue: '');
-  static const String _privacyUrl = String.fromEnvironment('PRIVACY_URL', defaultValue: '');
-  static const String _supportUrl = String.fromEnvironment('SUPPORT_URL', defaultValue: '');
+  // Legal URLs - point to Firebase Hosting paths for legal documents
+  static const String _termsUrl = String.fromEnvironment(
+      'TERMS_URL',
+      defaultValue: 'https://crystal-grimoire-2025.web.app/terms.html');
+  static const String _privacyUrl = String.fromEnvironment(
+      'PRIVACY_URL',
+      defaultValue: 'https://crystal-grimoire-2025.web.app/privacy.html');
+  static const String _supportUrl = String.fromEnvironment(
+      'SUPPORT_URL',
+      defaultValue: 'mailto:support@crystalgrimoire.com');
   static const String _supportEmail =
       String.fromEnvironment('SUPPORT_EMAIL', defaultValue: 'support@crystalgrimoire.com');
   
@@ -104,13 +118,9 @@ class EnvironmentConfig {
   // Backend + Support configuration
   String get backendUrl => _backendUrl;
   bool get useLocalBackend => _useLocalBackend;
-  String get termsUrl =>
-      _termsUrl.isNotEmpty ? _termsUrl : '${_trimTrailingSlash(websiteUrl)}/legal/terms';
-  String get privacyUrl => _privacyUrl.isNotEmpty
-      ? _privacyUrl
-      : '${_trimTrailingSlash(websiteUrl)}/legal/privacy';
-  String get supportUrl =>
-      _supportUrl.isNotEmpty ? _supportUrl : '${_trimTrailingSlash(websiteUrl)}/support';
+  String get termsUrl => _termsUrl;
+  String get privacyUrl => _privacyUrl;
+  String get supportUrl => _supportUrl;
   String get supportEmail => _supportEmail;
   
   // API Endpoints

@@ -147,6 +147,86 @@ class FirebaseFunctionsService {
     }
   }
 
+  /// Add crystal to user's personal collection
+  ///
+  /// [crystalData] - Full crystal identification data
+  /// [customName] - Optional custom name for the crystal
+  /// [acquisitionSource] - How acquired: 'identified', 'purchased', 'gifted'
+  /// [notes] - Personal notes about the crystal
+  static Future<Map<String, dynamic>> addCrystalToCollection({
+    required Map<String, dynamic> crystalData,
+    String? customName,
+    String? acquisitionSource,
+    String? notes,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('addCrystalToCollection');
+      final result = await callable.call({
+        'crystalData': crystalData,
+        'customName': customName,
+        'acquisitionSource': acquisitionSource ?? 'identified',
+        'notes': notes,
+      });
+
+      return Map<String, dynamic>.from(result.data);
+    } catch (e) {
+      throw Exception('Failed to add crystal to collection: $e');
+    }
+  }
+
+  /// Get user's complete crystal collection with balance analysis
+  ///
+  /// Returns collection with element, chakra, and energy balance percentages
+  static Future<Map<String, dynamic>> getCrystalCollection() async {
+    try {
+      final callable = _functions.httpsCallable('getCrystalCollection');
+      final result = await callable.call();
+
+      return Map<String, dynamic>.from(result.data);
+    } catch (e) {
+      throw Exception('Failed to get crystal collection: $e');
+    }
+  }
+
+  /// Remove crystal from user's collection
+  ///
+  /// [crystalId] - ID of crystal to remove
+  static Future<Map<String, dynamic>> removeCrystalFromCollection({
+    required String crystalId,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('removeCrystalFromCollection');
+      final result = await callable.call({
+        'crystalId': crystalId,
+      });
+
+      return Map<String, dynamic>.from(result.data);
+    } catch (e) {
+      throw Exception('Failed to remove crystal from collection: $e');
+    }
+  }
+
+  /// Update crystal information in collection
+  ///
+  /// [crystalId] - ID of crystal to update
+  /// [updates] - Map of fields to update (customName, notes, acquisitionSource)
+  static Future<Map<String, dynamic>> updateCrystalInCollection({
+    required String crystalId,
+    required Map<String, dynamic> updates,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('updateCrystalInCollection');
+      final result = await callable.call({
+        'crystalId': crystalId,
+        'updates': updates,
+      });
+
+      return Map<String, dynamic>.from(result.data);
+    } catch (e) {
+      throw Exception('Failed to update crystal in collection: $e');
+    }
+  }
+
   /// Helper method to convert image to base64
   static String imageToBase64(Uint8List imageBytes) {
     return base64Encode(imageBytes);

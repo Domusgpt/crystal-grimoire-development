@@ -76,16 +76,32 @@ class _AccountScreenState extends State<AccountScreen>
           _planExpiresAt = _coerceToDateTime(_userData?['subscriptionExpiresAt']);
         }
 
-        // Load user statistics
-        final statsDoc = await FirebaseFirestore.instance
-            .collection('user_stats')
+        // Load user statistics from ACTUAL data (not empty user_stats collection)
+        // Get real crystal collection count
+        final collectionSnapshot = await FirebaseFirestore.instance
+            .collection('users')
             .doc(_currentUser!.uid)
+            .collection('collection')
             .get();
 
-        if (statsDoc.exists) {
-          _userStats = statsDoc.data();
-          _collectionCount = _intFrom(_userStats?['collectionCount'], fallback: _collectionCount);
-        }
+        // Get real journal entries count
+        final journalSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_currentUser!.uid)
+            .collection('dreams')
+            .get();
+
+        // Calculate day streak from journal entries
+        int streak = _calculateStreak(journalSnapshot.docs);
+
+        // Build stats from real data
+        _userStats = {
+          'crystalsIdentified': collectionSnapshot.size,
+          'journalEntries': journalSnapshot.size,
+          'daysStreak': streak,
+          'collectionCount': collectionSnapshot.size,
+        };
+        _collectionCount = collectionSnapshot.size;
 
         await _loadPlanAndUsage(_currentUser!.uid);
       }
@@ -155,6 +171,61 @@ class _AccountScreenState extends State<AccountScreen>
   void dispose() {
     _fadeController.dispose();
     super.dispose();
+  }
+
+  /// Calculate consecutive day streak from journal entries
+  int _calculateStreak(List<QueryDocumentSnapshot> docs) {
+    if (docs.isEmpty) return 0;
+
+    // Get all entry dates
+    final dates = <DateTime>[];
+    for (final doc in docs) {
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data != null) {
+        final timestamp = data['createdAt'] ?? data['dreamDate'] ?? data['timestamp'];
+        if (timestamp != null) {
+          try {
+            final date = timestamp is Timestamp
+                ? timestamp.toDate()
+                : DateTime.parse(timestamp.toString());
+            dates.add(DateTime(date.year, date.month, date.day)); // Normalize to date only
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (dates.isEmpty) return 0;
+
+    // Sort descending (most recent first)
+    dates.sort((a, b) => b.compareTo(a));
+    final uniqueDates = dates.toSet().toList()..sort((a, b) => b.compareTo(a));
+
+    // Count consecutive days starting from today or yesterday
+    final today = DateTime.now();
+    final todayNormalized = DateTime(today.year, today.month, today.day);
+    final yesterday = todayNormalized.subtract(const Duration(days: 1));
+
+    int streak = 0;
+    DateTime? expectedDate;
+
+    for (final date in uniqueDates) {
+      if (expectedDate == null) {
+        // First entry - must be today or yesterday to start streak
+        if (date == todayNormalized || date == yesterday) {
+          streak = 1;
+          expectedDate = date.subtract(const Duration(days: 1));
+        } else {
+          break; // Streak broken - no recent entry
+        }
+      } else if (date == expectedDate) {
+        streak++;
+        expectedDate = date.subtract(const Duration(days: 1));
+      } else if (date.isBefore(expectedDate)) {
+        break; // Gap found, streak ends
+      }
+    }
+
+    return streak;
   }
 
   @override
@@ -752,10 +823,7 @@ class _AccountScreenState extends State<AccountScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Navigator.pushNamed(context, '/subscription'); // Temporarily disabled
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Subscription feature coming soon!')),
-              );
+              Navigator.pushNamed(context, '/subscription');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber,

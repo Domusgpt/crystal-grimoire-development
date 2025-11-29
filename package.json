@@ -23,5 +23,8 @@
   "homepage": "https://github.com/Domusgpt/crystal-grimoire-fresh#readme",
   "dependencies": {
     "@google-cloud/vertexai": "^1.10.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }

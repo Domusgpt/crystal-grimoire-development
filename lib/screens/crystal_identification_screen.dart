@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:typed_data';
 import '../theme/app_theme.dart';
 import '../services/crystal_service.dart';
 import '../services/auth_service.dart';
+import '../services/firebase_functions_service.dart';
+import '../services/image_cache_service.dart';
 import '../widgets/glassmorphic_container.dart';
 import '../widgets/holographic_button.dart';
 import "../widgets/no_particles.dart";
@@ -198,41 +199,25 @@ class _CrystalIdentificationScreenState extends State<CrystalIdentificationScree
     }
 
     try {
-      final identification =
-          (result['identification'] as Map<String, dynamic>?) ?? {};
-      final metaphysical =
-          (result['metaphysical_properties'] as Map<String, dynamic>?) ?? {};
+      // Use Cloud Functions backend for collection management
+      final response = await FirebaseFunctionsService.addCrystalToCollection(
+        crystalData: result,
+        acquisitionSource: 'identified',
+      );
 
-      final data = <String, dynamic>{
-        'name': identification['name'] ?? 'Unknown Crystal',
-        'confidence': identification['confidence'],
-        'variety': identification['variety'],
-        'description': result['description'],
-        'imageUrl': result['imageUrl'],
-        'metaphysicalProperties': metaphysical,
-        'healingProperties':
-            List<String>.from(metaphysical['healing_properties'] ?? const []),
-        'primaryChakras':
-            List<String>.from(metaphysical['primary_chakras'] ?? const []),
-        'zodiacSigns':
-            List<String>.from(metaphysical['zodiac_signs'] ?? const []),
-        'elements':
-            List<String>.from(metaphysical['elements'] ?? const []),
-        'source': 'identification',
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('collection')
-          .add(data);
+      // Cache the thumbnail locally for faster loading in collection view
+      if (_imageBytes != null && response['crystalId'] != null) {
+        await ImageCacheService.cacheCollectionThumbnail(
+          response['crystalId'] as String,
+          _imageBytes!,
+        );
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${data['name']} added to your collection.',
+            '${result['identification']['name'] ?? 'Crystal'} added to your collection!',
             style: const TextStyle(color: Colors.white),
           ),
           backgroundColor: AppTheme.amethystPurple,

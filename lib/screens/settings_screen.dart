@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/environment_config.dart';
+import '../services/audio_service.dart';
+import '../utils/haptics.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -44,7 +46,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _initServices();
     _loadSettings();
+  }
+
+  Future<void> _initServices() async {
+    await AudioService.init();
+    await Haptics.init();
   }
 
   Future<void> _loadSettings() async {
@@ -449,31 +457,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
-          SwitchListTile(
-            title: Text(
-              'Push Notifications',
-              style: GoogleFonts.crimsonText(
-                color: Colors.white,
-                fontSize: 18,
-              ),
+          // Push Notifications - Coming Soon (no notification service implemented)
+          ListTile(
+            title: Row(
+              children: [
+                Text(
+                  'Push Notifications',
+                  style: GoogleFonts.crimsonText(
+                    color: Colors.white54,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Coming Soon',
+                    style: GoogleFonts.crimsonText(
+                      color: Colors.purple[200],
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             subtitle: Text(
-              'Receive crystal insights and reminders',
+              'Crystal insights and reminders',
               style: GoogleFonts.crimsonText(
-                color: Colors.white70,
+                color: Colors.white38,
                 fontSize: 14,
               ),
             ),
-            value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() {
-                _notificationsEnabled = value;
-              });
-              _persistSettings();
-            },
-            activeColor: Colors.purple,
+            trailing: Switch(
+              value: false,
+              onChanged: null, // Disabled
+              activeColor: Colors.purple,
+            ),
           ),
           const Divider(color: Colors.white24),
+          // Sound Effects - WORKING
           SwitchListTile(
             title: Text(
               'Sound Effects',
@@ -491,14 +518,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             value: _soundEnabled,
             onChanged: (value) {
+              Haptics.light(); // Provide haptic feedback on toggle
               setState(() {
                 _soundEnabled = value;
               });
+              // Update the AudioService immediately
+              AudioService.setEnabled(value);
+              // Play feedback sound if enabling
+              if (value) {
+                AudioService.playToggleOn();
+              }
               _persistSettings();
             },
             activeColor: Colors.purple,
           ),
           const Divider(color: Colors.white24),
+          // Vibration/Haptics - WORKING
           SwitchListTile(
             title: Text(
               'Vibration',
@@ -519,6 +554,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() {
                 _vibrationEnabled = value;
               });
+              // Update Haptics immediately
+              Haptics.setEnabled(value);
+              // Provide feedback if enabling
+              if (value) {
+                Haptics.medium();
+              }
               _persistSettings();
             },
             activeColor: Colors.purple,
@@ -538,52 +579,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
-          SwitchListTile(
-            title: Text(
-              'Dark Mode',
-              style: GoogleFonts.crimsonText(
-                color: Colors.white,
-                fontSize: 18,
-              ),
+          // Dark Mode - Coming Soon (app is dark-only by design)
+          ListTile(
+            title: Row(
+              children: [
+                Text(
+                  'Dark Mode',
+                  style: GoogleFonts.crimsonText(
+                    color: Colors.white54,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Always On',
+                    style: GoogleFonts.crimsonText(
+                      color: Colors.purple[200],
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             subtitle: Text(
-              'Use dark theme throughout the app',
+              'Mystical dark theme is the default experience',
               style: GoogleFonts.crimsonText(
-                color: Colors.white70,
+                color: Colors.white38,
                 fontSize: 14,
               ),
             ),
-            value: _darkModeEnabled,
-            onChanged: (value) {
-              setState(() {
-                _darkModeEnabled = value;
-              });
-              _persistSettings();
-            },
-            activeColor: Colors.purple,
+            trailing: Switch(
+              value: true, // Always on
+              onChanged: null, // Disabled - dark mode is the only theme
+              activeColor: Colors.purple,
+            ),
           ),
           const Divider(color: Colors.white24),
+          // Language - Coming Soon (no i18n framework)
           ListTile(
-            title: Text(
-              'Language',
-              style: GoogleFonts.crimsonText(
-                color: Colors.white,
-                fontSize: 18,
-              ),
+            title: Row(
+              children: [
+                Text(
+                  'Language',
+                  style: GoogleFonts.crimsonText(
+                    color: Colors.white54,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Coming Soon',
+                    style: GoogleFonts.crimsonText(
+                      color: Colors.purple[200],
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             subtitle: Text(
-              _languageLabel,
+              'English (more languages coming)',
               style: GoogleFonts.crimsonText(
-                color: Colors.white70,
+                color: Colors.white38,
                 fontSize: 14,
               ),
             ),
             trailing: Icon(
               Icons.arrow_forward_ios,
-              color: Colors.white54,
+              color: Colors.white24,
               size: 16,
             ),
-            onTap: _showLanguageSheet,
+            onTap: () {
+              Haptics.light();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Additional languages coming in a future update!'),
+                  backgroundColor: Colors.purple[400],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -600,71 +688,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
+          // Header with Coming Soon badge
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Icon(Icons.notifications_paused, color: Colors.white38, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Reminders require push notifications',
+                  style: GoogleFonts.crimsonText(
+                    color: Colors.white38,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Meditation Reminders - Coming Soon
           ListTile(
-            title: Text(
-              'Meditation Reminders',
-              style: GoogleFonts.crimsonText(
-                color: Colors.white,
-                fontSize: 18,
-              ),
+            title: Row(
+              children: [
+                Text(
+                  'Meditation Reminders',
+                  style: GoogleFonts.crimsonText(
+                    color: Colors.white54,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Coming Soon',
+                    style: GoogleFonts.crimsonText(
+                      color: Colors.purple[200],
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             subtitle: Text(
-              _meditationReminder,
+              'Daily mindfulness reminders',
               style: GoogleFonts.crimsonText(
-                color: Colors.white70,
+                color: Colors.white38,
                 fontSize: 14,
               ),
             ),
-            trailing: DropdownButton<String>(
-              value: _meditationReminder,
-              dropdownColor: const Color(0xFF1A1A3A),
+            trailing: Text(
+              'Off',
               style: GoogleFonts.crimsonText(
-                color: Colors.white,
+                color: Colors.white38,
                 fontSize: 14,
               ),
-              items: ['Never', 'Daily', 'Weekly', 'Monthly']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _meditationReminder = value!;
-                });
-                _persistSettings();
-              },
             ),
           ),
           const Divider(color: Colors.white24),
+          // Crystal Care Reminders - Coming Soon
           ListTile(
-            title: Text(
-              'Crystal Care Reminders',
-              style: GoogleFonts.crimsonText(
-                color: Colors.white,
-                fontSize: 18,
-              ),
+            title: Row(
+              children: [
+                Text(
+                  'Crystal Care Reminders',
+                  style: GoogleFonts.crimsonText(
+                    color: Colors.white54,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Coming Soon',
+                    style: GoogleFonts.crimsonText(
+                      color: Colors.purple[200],
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
             subtitle: Text(
-              _crystalReminder,
+              'Cleansing and charging reminders',
               style: GoogleFonts.crimsonText(
-                color: Colors.white70,
+                color: Colors.white38,
                 fontSize: 14,
               ),
             ),
-            trailing: DropdownButton<String>(
-              value: _crystalReminder,
-              dropdownColor: const Color(0xFF1A1A3A),
+            trailing: Text(
+              'Off',
               style: GoogleFonts.crimsonText(
-                color: Colors.white,
+                color: Colors.white38,
                 fontSize: 14,
               ),
-              items: ['Never', 'Daily', 'Weekly', 'Monthly']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _crystalReminder = value!;
-                });
-                _persistSettings();
-              },
             ),
           ),
         ],

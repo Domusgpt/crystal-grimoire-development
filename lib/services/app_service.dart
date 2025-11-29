@@ -198,7 +198,7 @@ class AppService extends ChangeNotifier {
     try {
       final userId = currentUser?.uid;
       if (userId == null) return false;
-      
+
       await firestore
           .collection('users')
           .doc(userId)
@@ -207,7 +207,15 @@ class AppService extends ChangeNotifier {
         ...crystalData,
         'addedAt': FieldValue.serverTimestamp(),
       });
-      
+
+      // Increment crystals identified stat
+      await firestore.collection('users').doc(userId).set({
+        'stats': {
+          'crystalsIdentified': FieldValue.increment(1),
+          'lastCrystalAddedAt': FieldValue.serverTimestamp(),
+        }
+      }, SetOptions(merge: true));
+
       notifyListeners();
       return true;
     } catch (e) {

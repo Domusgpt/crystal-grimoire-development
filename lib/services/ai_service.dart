@@ -150,17 +150,8 @@ helping souls connect with their crystalline teachers and guides.
     AIProvider? provider,
   }) async {
     try {
-      // FIRST: Check if backend is available and preferred
-      if (BackendConfig.useBackend && await BackendConfig.isBackendAvailable()) {
-        print('🔮 AIService routing to BackendService');
-        return await BackendService.identifyCrystal(
-          images: images,
-          userContext: userContext,
-          sessionId: sessionId,
-        );
-      }
-      
-      print('🔮 AIService using direct AI provider (backend not available)');
+      // USE DIRECT GEMINI - Cloud Functions deployment issues, using client-side Gemini 1.5 Flash
+      print('🔮 AIService using direct Gemini 1.5 Flash with JSON schema');
 
       // Check usage limits
       if (!await UsageTracker.canIdentify()) {
@@ -244,7 +235,7 @@ helping souls connect with their crystalline teachers and guides.
     }
   }
 
-  /// Google Gemini API call - Model selection based on user tier
+  /// Google Gemini API call - Model selection based on user tier with JSON schema validation
   static Future<String> _callGemini(List<String> base64Images, String? userContext, {IdentificationTier? tier}) async {
     final apiKey = ApiConfig.geminiApiKey;
     if (apiKey.isEmpty) {
@@ -253,39 +244,47 @@ helping souls connect with their crystalline teachers and guides.
       );
     }
 
-    // Select model based on tier
-    String model;
+    // Select cost-efficient model based on tier
     tier ??= await UsageTracker.getIdentificationTier();
-    
+
+    String model;
     switch (tier) {
       case IdentificationTier.premium:
-        model = 'gemini-1.5-pro'; // Best Gemini model for Pro users
+        model = 'gemini-1.5-flash'; // Fast, cheap, vision-capable - perfect for premium
         break;
       case IdentificationTier.enhanced:
-        model = 'gemini-1.5-pro'; // Pro model for premium users
+        model = 'gemini-1.5-flash'; // Same great model
         break;
       case IdentificationTier.basic:
       default:
-        model = 'gemini-2.0-flash-exp'; // Latest Gemini 2.0 Flash for free users
+        model = 'gemini-1.5-flash'; // Cheapest vision model with JSON support
         break;
     }
 
     final url = '${_endpoints[AIProvider.gemini]}$model:generateContent?key=$apiKey';
-    
+
     // Build Gemini-specific request format
     final parts = <Map<String, dynamic>>[];
-    
+
     // Select appropriate prompt based on tier
-    final prompt = (tier == IdentificationTier.premium) 
-        ? _premiumSpiritualAdvisorPrompt 
+    final prompt = (tier == IdentificationTier.premium)
+        ? _premiumSpiritualAdvisorPrompt
         : _spiritualAdvisorPrompt;
-    
-    // Add the system prompt as text
+
+    // System instruction - similar to working backend
+    final systemInstruction = '''You are a world-class gemologist and spiritual guide. Analyze the provided image to identify any crystals, minerals, or stones. Your response must be a JSON object that strictly adheres to the provided schema.
+
+In the 'report' field, write a detailed analysis in markdown format. Start the report by clearly stating the official mineral name for clarity (e.g., "**Identified Mineral: Quartz (Amethyst variety)**"). Then, the primary focus should be on the metaphysical and spiritual information. Include the standard geological details but weave them into a more mystical narrative.
+
+In the 'data' field, populate the structured information accurately based on your identification. For 'analysis_date', use today's date.
+
+If no crystals are apparent, the 'crystal_type' should be 'Unknown' and the report should explain what is seen instead.''';
+
+    // Add text instruction
     parts.add({
-      'text': prompt + '\n\n' + 
-              (userContext ?? 'Please identify this crystal and provide spiritual guidance.')
+      'text': userContext ?? 'Please identify this crystal and provide spiritual guidance.'
     });
-    
+
     // Add images
     for (final imageData in base64Images) {
       parts.add({
@@ -296,6 +295,76 @@ helping souls connect with their crystalline teachers and guides.
       });
     }
 
+    // JSON Response Schema - EXACT structure from working backend
+    final responseSchema = {
+      'type': 'OBJECT',
+      'properties': {
+        'report': {
+          'type': 'STRING',
+          'description': 'A detailed report in markdown format. The focus should be on the crystal\'s metaphysical and spiritual properties, while also including basic geological information. The tone should be mystical and informative.',
+        },
+        'data': {
+          'type': 'OBJECT',
+          'properties': {
+            'crystal_type': {
+              'type': 'STRING',
+              'description': 'The most likely name of the crystal or mineral.'
+            },
+            'colors': {
+              'type': 'ARRAY',
+              'items': {'type': 'STRING'},
+              'description': 'An array of dominant colors observed in the image.',
+            },
+            'analysis_date': {
+              'type': 'STRING',
+              'description': 'The current date of the analysis in ISO 8601 format (YYYY-MM-DD).',
+            },
+            'metaphysical_properties': {
+              'type': 'OBJECT',
+              'properties': {
+                'primary_chakras': {
+                  'type': 'ARRAY',
+                  'items': {'type': 'STRING'},
+                  'description': 'Associated primary chakras (e.g., \'Root\', \'Sacral\', \'Heart\').'
+                },
+                'element': {
+                  'type': 'STRING',
+                  'description': 'Associated element (e.g., \'Earth\', \'Water\', \'Fire\', \'Air\').'
+                },
+                'zodiac_signs': {
+                  'type': 'ARRAY',
+                  'items': {'type': 'STRING'},
+                  'description': 'Associated zodiac signs (e.g., \'Aries\', \'Taurus\').'
+                },
+                'healing_properties': {
+                  'type': 'ARRAY',
+                  'items': {'type': 'STRING'},
+                  'description': 'A list of key spiritual and healing properties.'
+                },
+              },
+              'required': ['primary_chakras', 'element', 'zodiac_signs', 'healing_properties']
+            },
+            'geological_data': {
+              'type': 'OBJECT',
+              'properties': {
+                'mohs_hardness': {
+                  'type': 'STRING',
+                  'description': 'The Mohs hardness scale rating (e.g., \'7\', \'4-5\').'
+                },
+                'chemical_formula': {
+                  'type': 'STRING',
+                  'description': 'The chemical formula (e.g., \'SiO2\').'
+                },
+              },
+              'required': ['mohs_hardness', 'chemical_formula']
+            }
+          },
+          'required': ['crystal_type', 'colors', 'analysis_date', 'metaphysical_properties', 'geological_data']
+        }
+      },
+      'required': ['report', 'data']
+    };
+
     final response = await http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
@@ -303,11 +372,16 @@ helping souls connect with their crystalline teachers and guides.
         'contents': [{
           'parts': parts
         }],
+        'systemInstruction': {
+          'parts': [{'text': systemInstruction}]
+        },
         'generationConfig': {
           'temperature': 0.7,
           'topK': 40,
           'topP': 0.95,
           'maxOutputTokens': 2048,
+          'responseMimeType': 'application/json',  // CRITICAL: Force JSON response
+          'responseSchema': responseSchema,         // CRITICAL: Schema validation
         },
         'safetySettings': [
           {
@@ -332,7 +406,9 @@ helping souls connect with their crystalline teachers and guides.
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['candidates'][0]['content']['parts'][0]['text'];
+      // Response is now JSON, not plain text
+      final jsonResponse = data['candidates'][0]['content']['parts'][0]['text'];
+      return jsonResponse;
     } else {
       final error = jsonDecode(response.body);
       throw Exception('Gemini API error: ${error['error']['message'] ?? response.statusCode}');
@@ -538,10 +614,104 @@ helping souls connect with their crystalline teachers and guides.
     required String sessionId,
     required List<PlatformFile> images,
   }) {
+    try {
+      // Parse structured JSON response from Gemini 2.5 Pro
+      final jsonData = jsonDecode(response) as Map<String, dynamic>;
+
+      // Extract structured data
+      final report = jsonData['report'] as String? ?? '';
+      final data = jsonData['data'] as Map<String, dynamic>? ?? {};
+
+      final crystalType = data['crystal_type'] as String? ?? 'Unknown Crystal';
+      final colors = List<String>.from(data['colors'] ?? []);
+      final analysisDate = data['analysis_date'] as String? ?? DateTime.now().toIso8601String();
+
+      // Metaphysical properties
+      final metaphysicalProps = data['metaphysical_properties'] as Map<String, dynamic>? ?? {};
+      final primaryChakras = List<String>.from(metaphysicalProps['primary_chakras'] ?? []);
+      final element = metaphysicalProps['element'] as String? ?? 'Earth';
+      final zodiacSigns = List<String>.from(metaphysicalProps['zodiac_signs'] ?? []);
+      final healingProps = List<String>.from(metaphysicalProps['healing_properties'] ?? []);
+
+      // Geological data
+      final geologicalData = data['geological_data'] as Map<String, dynamic>? ?? {};
+      final mohsHardness = geologicalData['mohs_hardness'] as String? ?? 'Unknown';
+      final chemicalFormula = geologicalData['chemical_formula'] as String? ?? 'Unknown';
+
+      // Calculate confidence based on certainty in report
+      double confidence = 0.85; // Default high confidence from structured response
+      if (crystalType.toLowerCase() == 'unknown') {
+        confidence = 0.3;
+      } else if (report.toLowerCase().contains('certain') || report.toLowerCase().contains('clearly')) {
+        confidence = 0.95;
+      } else if (report.toLowerCase().contains('likely') || report.toLowerCase().contains('appears')) {
+        confidence = 0.80;
+      } else if (report.toLowerCase().contains('possible') || report.toLowerCase().contains('may be')) {
+        confidence = 0.60;
+      }
+
+      // Extract mystical message from report (first paragraph usually)
+      final reportLines = report.split('\n\n');
+      final mysticalMessage = reportLines.isNotEmpty
+          ? reportLines.first.replaceAll('**', '').trim()
+          : 'This crystal carries powerful energies for your spiritual journey.';
+
+      // Create comprehensive crystal object
+      final crystal = Crystal(
+        id: const Uuid().v4(),
+        name: crystalType,
+        scientificName: chemicalFormula,
+        group: 'Mineral',
+        description: report,
+        metaphysicalProperties: healingProps,
+        healingProperties: healingProps,
+        chakras: primaryChakras,
+        elements: [element],
+        properties: {
+          'healing': healingProps,
+          'energy': element,
+          'vibration': 'High',
+          'colors': colors,
+          'zodiac_signs': zodiacSigns,
+        },
+        colorDescription: colors.join(', '),
+        hardness: mohsHardness,
+        formation: 'Natural mineral formation',
+        careInstructions: 'Cleanse under moonlight, charge with intention.',
+        identificationDate: DateTime.tryParse(analysisDate),
+      );
+
+      return CrystalIdentification(
+        sessionId: sessionId,
+        crystal: crystal,
+        confidence: confidence,
+        mysticalMessage: mysticalMessage,
+        fullResponse: report,
+        timestamp: DateTime.now(),
+      );
+
+    } catch (e) {
+      print('⚠️ Failed to parse structured JSON response, falling back to text parsing: $e');
+
+      // Fallback to old text-based parsing if JSON parsing fails
+      return _parseResponseLegacy(
+        response: response,
+        sessionId: sessionId,
+        images: images,
+      );
+    }
+  }
+
+  /// Legacy text-based response parsing (fallback)
+  static CrystalIdentification _parseResponseLegacy({
+    required String response,
+    required String sessionId,
+    required List<PlatformFile> images,
+  }) {
     // Extract crystal name and properties from response
     String crystalName = 'Unknown Crystal';
     double confidence = 0.7;
-    
+
     // Simple extraction - look for crystal names
     final crystalNames = [
       'Amethyst', 'Clear Quartz', 'Rose Quartz', 'Citrine', 'Black Tourmaline',
@@ -549,25 +719,25 @@ helping souls connect with their crystalline teachers and guides.
       'Lapis Lazuli', 'Amazonite', 'Carnelian', 'Obsidian', 'Jade',
       'Moonstone', 'Turquoise', 'Garnet', 'Aquamarine', 'Sodalite'
     ];
-    
+
     for (final name in crystalNames) {
       if (response.contains(name)) {
         crystalName = name;
         break;
       }
     }
-    
-    // Parse confidence based on new mystical expressions
-    if (response.toLowerCase().contains("spirits clearly reveal") || 
+
+    // Parse confidence based on mystical expressions
+    if (response.toLowerCase().contains("spirits clearly reveal") ||
         response.toLowerCase().contains("spirits have shown")) {
       confidence = 0.9;
-    } else if (response.toLowerCase().contains("energies suggest") || 
+    } else if (response.toLowerCase().contains("energies suggest") ||
                response.toLowerCase().contains("vibrations indicate")) {
       confidence = 0.75;
-    } else if (response.toLowerCase().contains("i sense") || 
+    } else if (response.toLowerCase().contains("i sense") ||
                response.toLowerCase().contains("feels like")) {
       confidence = 0.55;
-    } else if (response.toLowerCase().contains("message is unclear") || 
+    } else if (response.toLowerCase().contains("message is unclear") ||
                response.toLowerCase().contains("guards its secrets")) {
       confidence = 0.3;
     }

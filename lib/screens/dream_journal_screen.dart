@@ -594,6 +594,11 @@ class _JournalScreenState extends State<JournalScreen>
   }
 
   Future<void> _saveEntry() async {
+    // Prevent double-submission / spam
+    if (_isSavingEntry) {
+      return;
+    }
+
     if (_journalController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -675,6 +680,14 @@ class _JournalScreenState extends State<JournalScreen>
           'mood': _selectedMood,
           'moonPhase': moonPhase,
         });
+
+        // Increment journal entries stat for new entries
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'stats': {
+            'journalEntries': FieldValue.increment(1),
+            'lastJournalEntryAt': FieldValue.serverTimestamp(),
+          }
+        }, SetOptions(merge: true));
       }
 
       if (!mounted) return;

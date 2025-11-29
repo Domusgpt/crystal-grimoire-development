@@ -122,7 +122,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _purchase(MockPackage package) async {
-    if (_isPurchasing) return;
+    print('🔥 _purchase called with package: ${package.identifier}');
+    if (_isPurchasing) {
+      print('🔥 Already purchasing, returning');
+      return;
+    }
 
     setState(() {
       _isPurchasing = true;
@@ -130,8 +134,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     });
 
     try {
+      print('🔥 Starting purchase for: ${package.identifier}');
+      print('🔥 premiumMonthlyId: ${EnhancedPaymentService.premiumMonthlyId}');
+      print('🔥 proMonthlyId: ${EnhancedPaymentService.proMonthlyId}');
+      print('🔥 foundersLifetimeId: ${EnhancedPaymentService.foundersLifetimeId}');
+
       PurchaseResult result;
       if (package.identifier == EnhancedPaymentService.premiumMonthlyId) {
+        print('🔥 Calling purchasePremium');
         result = await EnhancedPaymentService.purchasePremium();
       } else if (package.identifier == EnhancedPaymentService.proMonthlyId) {
         result = await EnhancedPaymentService.purchasePro();

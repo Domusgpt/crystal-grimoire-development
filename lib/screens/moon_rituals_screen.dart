@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import '../services/app_state.dart';
 import '../services/collection_service_v2.dart';
+import '../widgets/coming_soon_card.dart';
 import 'package:provider/provider.dart';
 
 class MoonRitualScreen extends StatefulWidget {
@@ -157,9 +158,14 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
                   
                   // Ritual guidance
                   _buildRitualGuidance(),
-                  
+
+                  const SizedBox(height: 32),
+
+                  // Moon Ritual Expert Guide - Coming Soon
+                  ComingSoonCard.moonRitual(),
+
                   const SizedBox(height: 24),
-                  
+
                   // Schedule ritual button
                   _buildScheduleButton(),
                 ],

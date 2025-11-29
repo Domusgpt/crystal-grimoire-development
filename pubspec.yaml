@@ -21,8 +21,8 @@ dependencies:
   firebase_messaging: ^16.0.1
   firebase_performance: ^0.11.0+1
   
-  # Auth - UPGRADED TO MODERN 7.x VERSIONS
-  google_sign_in: ^7.1.1
+  # Auth - Using 6.x for web compatibility
+  google_sign_in: ^6.2.0
   sign_in_with_apple: ^7.0.1
   
   # UI & Design
@@ -63,6 +63,7 @@ dependencies:
   # Icons & Assets
   cupertino_icons: ^1.0.6
   flutter_svg: ^2.0.10+1
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:

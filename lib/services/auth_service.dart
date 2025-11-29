@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,9 +9,8 @@ import 'storage_service.dart';
 
 class AuthService extends ChangeNotifier {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn.instance; // Modern 7.x singleton pattern
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(); // google_sign_in 6.x pattern
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static bool _isGoogleSignInInitialized = false;
   
   // Stream of auth state changes
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -65,66 +65,75 @@ class AuthService extends ChangeNotifier {
     }
   }
   
-  // Initialize Google Sign-In (required in 7.x)
-  static Future<void> _initializeGoogleSignIn() async {
-    if (!_isGoogleSignInInitialized) {
-      try {
-        await _googleSignIn.initialize();
-        _isGoogleSignInInitialized = true;
-        print('✅ Google Sign-In initialized');
-      } catch (e) {
-        print('❌ Failed to initialize Google Sign-In: $e');
-        throw Exception('Google Sign-In initialization failed: $e');
-      }
-    }
-  }
-
-  // Sign in with Google - Modern 7.x API with Firebase integration
+  // Sign in with Google - Uses signInWithPopup on web for reliable idToken
   static Future<UserCredential?> signInWithGoogle() async {
     try {
-      print('🔑 Starting Google Sign-In 7.x process...');
-      
-      // Initialize Google Sign-In (required in 7.x)
-      await _initializeGoogleSignIn();
-      
-      // Trigger the authentication flow using modern authenticate() method
-      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate(
-        scopeHint: ['email', 'profile'],
-      );
-      
-      if (googleUser == null) {
-        print('❌ Google sign in cancelled by user');
-        return null; // User cancelled
+      print('🔑 Starting Google Sign-In process...');
+      print('🌐 Platform is web: $kIsWeb');
+
+      UserCredential userCredential;
+
+      if (kIsWeb) {
+        // WEB PLATFORM: Use Firebase's signInWithPopup for reliable OAuth
+        // This is the recommended approach for Flutter web as of 2024
+        // The google_sign_in package's signIn() method doesn't reliably
+        // return idToken on web platforms
+        print('🌐 Using Firebase signInWithPopup for web...');
+
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+        // Add scopes for email and profile
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+
+        // Force account selection (don't auto-select last account)
+        googleProvider.setCustomParameters({
+          'prompt': 'select_account'
+        });
+
+        // This opens a popup and handles the entire OAuth flow
+        userCredential = await _auth.signInWithPopup(googleProvider);
+
+        print('✅ Firebase signInWithPopup successful: ${userCredential.user?.email}');
+      } else {
+        // MOBILE PLATFORM: Use google_sign_in package
+        print('📱 Using GoogleSignIn package for mobile...');
+
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+        if (googleUser == null) {
+          print('❌ Google sign in cancelled by user');
+          return null; // User cancelled
+        }
+
+        print('✅ Google user authenticated: ${googleUser.email}');
+
+        // Get the authentication details from the request
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+        if (googleAuth.idToken == null) {
+          print('❌ Google authentication idToken is null');
+          throw Exception('Google authentication failed - no idToken received');
+        }
+
+        print('✅ Google authentication tokens received');
+
+        // Create Firebase credential using the Google ID token
+        final credential = GoogleAuthProvider.credential(
+          idToken: googleAuth.idToken,
+          accessToken: googleAuth.accessToken,
+        );
+
+        // Sign in to Firebase with the Google credential
+        print('🔥 Signing in to Firebase with Google credentials...');
+        userCredential = await _auth.signInWithCredential(credential);
       }
-      
-      print('✅ Google user authenticated: ${googleUser.email}');
-      
-      // Get the authentication details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      
-      if (googleAuth.idToken == null) {
-        print('❌ Google authentication idToken is null');
-        throw Exception('Google authentication failed - no idToken received');
-      }
-      
-      print('✅ Google authentication tokens received');
-      
-      // Create Firebase credential using the Google ID token
-      // Firebase handles authentication with idToken only in modern setup
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-        accessToken: null, // Not required for Firebase integration
-      );
-      
-      // Sign in to Firebase with the Google credential
-      print('🔥 Signing in to Firebase with Google credentials...');
-      final userCredential = await _auth.signInWithCredential(credential);
-      
+
       print('✅ Firebase sign-in successful: ${userCredential.user?.email}');
-      
+
       // Create/update user document
       await _createUserDocument(userCredential.user!);
-      
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
       print('❌ Firebase Auth Error: ${e.code} - ${e.message}');

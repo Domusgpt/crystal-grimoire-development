@@ -7,6 +7,7 @@ import '../services/crystal_service.dart';
 import '../widgets/glassmorphic_container.dart';
 import "../widgets/no_particles.dart";
 import '../widgets/holographic_button.dart';
+import '../widgets/guru_fab_button.dart';
 import 'crystal_identification_screen.dart';
 import 'collection_screen.dart';
 import 'moon_rituals_screen.dart';
@@ -223,9 +224,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      floatingActionButton: const GuruFABButton(),
     );
   }
-  
+
   Widget _buildCrystalOfTheDay() {
     return GlassmorphicContainer(
       borderRadius: 25,

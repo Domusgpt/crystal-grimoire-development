@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/coming_soon_card.dart';
 
 class SoundBathScreen extends StatefulWidget {
   const SoundBathScreen({Key? key}) : super(key: key);
@@ -508,9 +509,14 @@ class _SoundBathScreenState extends State<SoundBathScreen>
                   
                   // Breathing guide
                   if (isPlaying) _buildBreathingGuide(),
-                  
+
                   const SizedBox(height: 32),
-                  
+
+                  // Sound Healing Expert - Coming Soon
+                  ComingSoonCard.soundHealing(),
+
+                  const SizedBox(height: 32),
+
                   // Play controls
                   _buildPlayControls(),
                 ],
