@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../widgets/common/mystical_button.dart';
 import '../widgets/animations/mystical_animations.dart';
+import '../widgets/premium_badge.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({Key? key}) : super(key: key);
@@ -563,21 +564,24 @@ class _AccountScreenState extends State<AccountScreen>
                     color: Colors.white,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _currentTier.toLowerCase() == 'free' ? Colors.grey : Colors.amber,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _tierChipLabel,
-                    style: GoogleFonts.cinzel(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+                _currentTier.toLowerCase() == 'free'
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.withOpacity(0.5)),
+                        ),
+                        child: Text(
+                          'FREE',
+                          style: GoogleFonts.cinzel(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      )
+                    : PremiumBadge(tier: _currentTier),
               ],
             ),
             const SizedBox(height: 16),

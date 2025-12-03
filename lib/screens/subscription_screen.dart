@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/enhanced_payment_service.dart';
+import 'subscription_success_screen.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -269,10 +270,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         _pendingSessionId = null;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Subscription activated: ${status.tier.toUpperCase()}'),
-          backgroundColor: Colors.green,
+      // Navigate to the beautiful success screen!
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              SubscriptionSuccessScreen(tierName: status.tier),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 500),
         ),
       );
     } catch (e) {
@@ -336,16 +345,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final tier = _status?.tier;
     if (tier == null) return false;
 
-    switch (package.identifier) {
-      case EnhancedPaymentService.premiumMonthlyId:
-        return tier == 'premium' || tier == 'pro' || tier == 'founders';
-      case EnhancedPaymentService.proMonthlyId:
-        return tier == 'pro' || tier == 'founders';
-      case EnhancedPaymentService.foundersLifetimeId:
-        return tier == 'founders';
-      default:
-        return false;
+    final id = package.identifier;
+    if (id == EnhancedPaymentService.premiumMonthlyId) {
+      return tier == 'premium' || tier == 'pro' || tier == 'founders';
+    } else if (id == EnhancedPaymentService.proMonthlyId) {
+      return tier == 'pro' || tier == 'founders';
+    } else if (id == EnhancedPaymentService.foundersLifetimeId) {
+      return tier == 'founders';
     }
+    return false;
   }
 
   Widget _buildStatusCard() {

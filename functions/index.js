@@ -828,31 +828,47 @@ exports.createUserDocument = onDocumentCreated('users/{userId}', async (event) =
       return;
     }
     
-    console.log(`🆕 Creating user document for ${userId}`);
-    
+    console.log(`🆕 Creating/updating user document for ${userId}`);
+
     // Initialize user's subcollections and default data
     const userRef = db.collection('users').doc(userId);
-    
-    // Set default user profile data
+
+    // Check if user already exists with subscription data
+    const existingDoc = await userRef.get();
+    const existingData = existingDoc.exists ? existingDoc.data() : {};
+
+    // IMPORTANT: Preserve existing subscription data - don't overwrite paid subscriptions!
+    const hasExistingSubscription = existingData.subscriptionTier &&
+                                     existingData.subscriptionTier !== 'free';
+
+    // Set default user profile data, preserving subscription if exists
     const defaultProfile = {
       uid: userId,
-      email: userData.email || '',
-      displayName: userData.displayName || 'Crystal Seeker',
-      photoURL: userData.photoURL || null,
-      createdAt: FieldValue.serverTimestamp(),
+      email: userData.email || existingData.email || '',
+      displayName: userData.displayName || existingData.displayName || 'Crystal Seeker',
+      photoURL: userData.photoURL || existingData.photoURL || null,
+      createdAt: existingData.createdAt || FieldValue.serverTimestamp(),
       lastLoginAt: FieldValue.serverTimestamp(),
-      subscriptionTier: 'free',
-      subscriptionStatus: 'active',
-      monthlyIdentifications: 0,
-      totalIdentifications: 0,
-      metaphysicalQueries: 0,
-      settings: {
+      // PRESERVE existing subscription - only set 'free' for truly new users
+      subscriptionTier: existingData.subscriptionTier || existingData.tier || 'free',
+      tier: existingData.tier || existingData.subscriptionTier || 'free',
+      subscriptionStatus: existingData.subscriptionStatus || 'inactive',
+      stripeCustomerId: existingData.stripeCustomerId || null,
+      stripeSubscriptionId: existingData.stripeSubscriptionId || null,
+      monthlyIdentifications: existingData.monthlyIdentifications || 0,
+      totalIdentifications: existingData.totalIdentifications || 0,
+      metaphysicalQueries: existingData.metaphysicalQueries || 0,
+      settings: existingData.settings || {
         notifications: true,
         newsletter: true,
         darkMode: true,
       },
     };
-    
+
+    if (hasExistingSubscription) {
+      console.log(`📦 Preserving existing subscription: ${existingData.subscriptionTier}`);
+    }
+
     await userRef.set(defaultProfile, { merge: true });
     
     // Initialize empty collections
@@ -2512,6 +2528,7 @@ exports.createCheckoutSession = onCall(
       // Create checkout session
       const session = await getStripe().checkout.sessions.create({
         customer: customerId,
+        client_reference_id: auth.uid, // Primary user ID reference
         payment_method_types: ['card'],
         line_items: [
           {
@@ -2523,8 +2540,16 @@ exports.createCheckoutSession = onCall(
         success_url: `https://crystal-grimoire-2025.web.app/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `https://crystal-grimoire-2025.web.app/pricing`,
         metadata: {
-          firebaseUID: auth.uid,
+          uid: auth.uid, // Standardized naming
+          firebaseUID: auth.uid, // Legacy compatibility
           tier: tier
+        },
+        subscription_data: {
+          metadata: {
+            uid: auth.uid, // Standardized naming
+            firebaseUID: auth.uid, // Legacy compatibility
+            tier: tier
+          }
         }
       });
 
@@ -2564,8 +2589,18 @@ exports.handleStripeWebhook = onRequest(
       switch (event.type) {
         case 'checkout.session.completed': {
           const session = event.data.object;
-          const userId = session.metadata.firebaseUID;
-          const tier = session.metadata.tier;
+          // Try multiple sources for user ID: client_reference_id (preferred), metadata.uid, or metadata.firebaseUID
+          const userId = session.client_reference_id || session.metadata?.uid || session.metadata?.firebaseUID;
+          const tier = session.metadata?.tier || 'premium';
+
+          if (!userId) {
+            console.error('❌ No userId found in checkout session:', JSON.stringify({
+              client_reference_id: session.client_reference_id,
+              metadata: session.metadata,
+              sessionId: session.id
+            }));
+            break; // Can't update without userId
+          }
 
           // Update user tier
           await db.collection('users').doc(userId).update({
@@ -2583,7 +2618,8 @@ exports.handleStripeWebhook = onRequest(
         case 'invoice.payment_succeeded': {
           const invoice = event.data.object;
           const subscription = await getStripe().subscriptions.retrieve(invoice.subscription);
-          const userId = subscription.metadata?.firebaseUID;
+          // Support both naming conventions: uid (from createStripeCheckoutSession) and firebaseUID (legacy)
+          const userId = subscription.metadata?.uid || subscription.metadata?.firebaseUID;
 
           if (userId) {
             await db.collection('users').doc(userId).update({
@@ -2599,7 +2635,8 @@ exports.handleStripeWebhook = onRequest(
         case 'invoice.payment_failed': {
           const invoice = event.data.object;
           const subscription = await getStripe().subscriptions.retrieve(invoice.subscription);
-          const userId = subscription.metadata?.firebaseUID;
+          // Support both naming conventions: uid (from createStripeCheckoutSession) and firebaseUID (legacy)
+          const userId = subscription.metadata?.uid || subscription.metadata?.firebaseUID;
 
           if (userId) {
             await db.collection('users').doc(userId).update({
@@ -2626,7 +2663,8 @@ exports.handleStripeWebhook = onRequest(
 
         case 'customer.subscription.deleted': {
           const subscription = event.data.object;
-          const userId = subscription.metadata?.firebaseUID;
+          // Support both naming conventions: uid (from createStripeCheckoutSession) and firebaseUID (legacy)
+          const userId = subscription.metadata?.uid || subscription.metadata?.firebaseUID;
 
           if (userId) {
             await db.collection('users').doc(userId).update({

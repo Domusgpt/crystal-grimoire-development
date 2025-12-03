@@ -4,10 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/crystal_service.dart';
+import '../services/app_state.dart';
 import '../widgets/glassmorphic_container.dart';
 import "../widgets/no_particles.dart";
 import '../widgets/holographic_button.dart';
 import '../widgets/guru_fab_button.dart';
+import '../widgets/premium_badge.dart';
 import 'crystal_identification_screen.dart';
 import 'collection_screen.dart';
 import 'moon_rituals_screen.dart';
@@ -95,6 +97,22 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
+          // Show premium badge if user is subscribed
+          Consumer<AppState>(
+            builder: (context, appState, _) {
+              if (appState.subscriptionTier != 'free') {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: PremiumBadge(
+                    tier: appState.subscriptionTier,
+                    mini: true,
+                    showLabel: true,
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline, color: AppTheme.crystalGlow),
             onPressed: () {

@@ -29,18 +29,18 @@ class EnvironmentConfig {
   // Note: Publishable key is public and safe to include in client code
   static const String _stripePublishableKey = String.fromEnvironment(
       'STRIPE_PUBLISHABLE_KEY',
-      defaultValue: 'pk_test_51PMpy5P7RjgzZkITKZQMNTY1YRgvXZJYZQMNTY1YRgvXZJ');
+      defaultValue: 'pk_live_51PMpy5P7RjgzZkITGdlt6MBGWn2TApRE113vyMzIWmRzsLfRB263I2s9W8eupZSCtrbbilogwsWWn1dgzszRs9oj00GbrflyMC');
   static const String _stripeSecretKey = String.fromEnvironment('STRIPE_SECRET_KEY', defaultValue: '');
   // Price IDs are public identifiers - safe to include as defaults
   static const String _stripePremiumPriceId = String.fromEnvironment(
       'STRIPE_PREMIUM_PRICE_ID',
-      defaultValue: 'price_1SXCmJP7RjgzZkITq8J21YmC');
+      defaultValue: 'price_1RWLUuP7RjgzZkITg22yi41w');
   static const String _stripeProPriceId = String.fromEnvironment(
       'STRIPE_PRO_PRICE_ID',
-      defaultValue: 'price_1SXCmJP7RjgzZkITvyuN6YgQ');
+      defaultValue: 'price_1RWLUvP7RjgzZkITm0kK5iJA');
   static const String _stripeFoundersPriceId = String.fromEnvironment(
       'STRIPE_FOUNDERS_PRICE_ID',
-      defaultValue: 'price_1SXCmKP7RjgzZkITSwtX0xDf');
+      defaultValue: 'price_1RWLUvP7RjgzZkITCigXVDcH');
 
   // AdMob configuration
   static const String _admobAndroidBannerId = String.fromEnvironment('ADMOB_ANDROID_BANNER_ID', defaultValue: '');

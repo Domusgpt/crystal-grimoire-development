@@ -1,4 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/api_config.dart';
 
 /// Service for tracking API usage and enforcing subscription limits
@@ -179,10 +181,40 @@ class UsageTracker {
   }
   
   /// Gets current subscription tier
+  /// Checks Firestore for authenticated users to ensure server-side updates are reflected
   static Future<String> getCurrentSubscriptionTier() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_subscriptionTierKey) ?? SubscriptionConfig.freeTier;
+      final cachedTier = prefs.getString(_subscriptionTierKey);
+
+      // For authenticated users, check Firestore for the latest tier
+      // This ensures webhook updates are reflected immediately
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+          if (doc.exists && doc.data() != null) {
+            final firestoreTier = (doc.data()!['subscriptionTier'] ?? 'free').toString();
+
+            // If Firestore has a different tier, update local cache
+            if (firestoreTier != cachedTier && firestoreTier != 'free') {
+              await prefs.setString(_subscriptionTierKey, firestoreTier);
+              print('🔮 Subscription tier synced from Firestore: $firestoreTier');
+              return firestoreTier;
+            }
+
+            return firestoreTier;
+          }
+        } catch (e) {
+          print('Firestore subscription check failed, using cache: $e');
+        }
+      }
+
+      return cachedTier ?? SubscriptionConfig.freeTier;
     } catch (e) {
       return SubscriptionConfig.freeTier;
     }
